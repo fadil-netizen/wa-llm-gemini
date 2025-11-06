@@ -13,7 +13,7 @@ const { GoogleGenAI } = require('@google/genai');
 const mammoth = require('mammoth'); 
 const XLSX = require('xlsx'); 
 const pptx2json = require('pptx2json'); 
-const fs = require('fs'); // --- DIPERLUKAN UNTUK MEMBACA FILE GAMBAR
+const fs = require('fs'); 
 
 const ai = setting.GEMINI_AI_INSTANCE;
 const PREFIX = setting.PREFIX;
@@ -51,7 +51,7 @@ async function handleSendImageCommand(sock, from, imagePath, caption) {
 }
 
 
-// --- Fungsi Helper untuk Multimodal (Gambar & Dokumen) ---
+// --- Fungsi Helper untuk Multimodal (Gambar, Video & Dokumen) ---
 function bufferToGenerativePart(buffer, mimeType) {
     return {
         inlineData: {
@@ -154,7 +154,7 @@ function isBotMentioned(m, sock) {
     const botJidRaw = sock.user.id.split(':')[0];
 
     const contextInfo = m.message?.extendedTextMessage?.contextInfo;
-    const messageText = m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || m.message.documentMessage?.caption || ''; 
+    const messageText = m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || m.message.videoMessage?.caption || m.message.documentMessage?.caption || ''; 
 
     const mentionedJids = contextInfo?.mentionedJid || [];
     if (mentionedJids.includes(botJid)) {
@@ -203,13 +203,14 @@ async function handleGeminiRequest(sock, from, textQuery, mediaParts = []) {
             contents.push(finalQuery);
         } 
         else if (mediaParts.length > 0) {
-             const mediaType = mediaParts[0].inlineData.mimeType.startsWith('image') ? 'gambar' : 'dokumen';
+             const mediaType = mediaParts[0].inlineData.mimeType.startsWith('image') ? 'gambar' : 
+                               mediaParts[0].inlineData.mimeType.startsWith('video') ? 'video' : 'dokumen';
              finalQuery = `${contextInjection}\n\n*Permintaan Default:*\nAnalisis ${mediaType} ini secara sangat mendalam dan detail.`;
              contents.push(finalQuery);
         } 
         else {
              finalQuery = 
-                `${contextInjection}\n\n*Permintaan Default:*\nHalo! Saya Gemini. Anda bisa mengajukan pertanyaan, mengirim gambar, dokumen (PDF/TXT/DOCX/XLSX/PPTX), atau *voice note* setelah me-*tag* saya. Ketik ${PREFIX}menu untuk melihat daftar perintah.`;
+                `${contextInjection}\n\n*Permintaan Default:*\nHalo! Saya Gemini. Anda bisa mengajukan pertanyaan, mengirim gambar, video, dokumen (PDF/TXT/DOCX/XLSX/PPTX), atau *voice note* setelah me-*tag* saya. Ketik ${PREFIX}menu untuk melihat daftar perintah.`;
              contents.push(finalQuery);
         }
         
@@ -224,7 +225,7 @@ async function handleGeminiRequest(sock, from, textQuery, mediaParts = []) {
 
     } catch (error) {
         console.error("Gagal memproses pesan dengan Gemini AI:", error);
-        await sock.sendMessage(from, { text: "Maaf, terjadi kesalahan saat menghubungi Gemini AI. Pastikan file adalah format yang didukung (Gambar/Dokumen) dan ukurannya tidak terlalu besar." });
+        await sock.sendMessage(from, { text: "Maaf, terjadi kesalahan saat menghubungi Gemini AI. Pastikan file adalah format yang didukung (Gambar/Video/Dokumen) dan ukurannya tidak terlalu besar." });
     } finally {
         await sock.sendPresenceUpdate('available', from); 
     }
@@ -323,7 +324,7 @@ async function startSock() {
                 console.log('Koneksi ditutup. Anda telah logout.');
             }
         } else if (connection === 'open') {
-            console.log('Bot siap digunakan! Ingatan Otomatis, Multimodal (Gambar & Dokumen), Mode Cerdas, dan Google Search Aktif.');
+            console.log('Bot siap digunakan! Ingatan Otomatis, Multimodal (Gambar, Video & Dokumen), Mode Cerdas, dan Google Search Aktif.');
         }
     });
 
@@ -338,7 +339,7 @@ async function startSock() {
         const isGroup = from.endsWith('@g.us');
 
         const messageType = Object.keys(m.message)[0];
-        let messageText = m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || m.message.documentMessage?.caption || '';
+        let messageText = m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || m.message.videoMessage?.caption || m.message.documentMessage?.caption || '';
         
         const command = messageText.toLowerCase().split(' ')[0];
         const args = messageText.slice(command.length).trim();
@@ -462,7 +463,7 @@ Halo anda telah menghubungi fadil silakhan tunggu saya merespon atau.
             }
         } 
         
-        // A. Pesan Gambar Langsung atau Balasan Gambar
+        // A1. Pesan Gambar Langsung atau Balasan Gambar
         if (messageType === 'imageMessage' || (messageType === 'extendedTextMessage' && m.message.extendedTextMessage.contextInfo?.quotedMessage?.imageMessage)) {
              const imageMsg = messageType === 'imageMessage' ? m.message.imageMessage : m.message.extendedTextMessage.contextInfo.quotedMessage.imageMessage;
              
@@ -474,6 +475,25 @@ Halo anda telah menghubungi fadil silakhan tunggu saya merespon atau.
 
              mediaParts.push(bufferToGenerativePart(buffer, imageMsg.mimetype));
              isGeminiQuery = true;
+        }
+        
+        // A2. Pesan Video Langsung atau Balasan Video (LOGIKA BARU)
+        else if (messageType === 'videoMessage' || (messageType === 'extendedTextMessage' && m.message.extendedTextMessage.contextInfo?.quotedMessage?.videoMessage)) {
+            const videoMsg = messageType === 'videoMessage' ? m.message.videoMessage : m.message.extendedTextMessage.contextInfo.quotedMessage.videoMessage;
+
+            await sock.sendPresenceUpdate('composing', from); 
+            
+            const stream = await downloadContentFromMessage(videoMsg, 'video');
+            let buffer = Buffer.from([]);
+            for await (const chunk of stream) {
+                buffer = Buffer.concat([buffer, chunk]);
+            }
+            
+            console.log(`[VIDEO] Menerima video: ${videoMsg.mimetype}, ukuran: ${buffer.length} bytes`);
+
+            // Tambahkan video sebagai GenerativePart untuk dianalisis oleh Gemini
+            mediaParts.push(bufferToGenerativePart(buffer, videoMsg.mimetype));
+            isGeminiQuery = true;
         }
         
         // B. Pemrosesan Dokumen (Langsung atau Balasan)
@@ -544,7 +564,7 @@ Halo anda telah menghubungi fadil silakhan tunggu saya merespon atau.
         }
         
         // D. Perintah Teks
-        if (queryText.length > 0) {
+        if (queryText.length > 0 && !isGeminiQuery) {
             isGeminiQuery = true;
         }
         
