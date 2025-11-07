@@ -1,12 +1,18 @@
 {
   "name": "wa-bot-baileys",
   "version": "1.0.0",
-  "description": "",
+  "description": "WhatsApp Bot powered by Baileys and Google Gemini",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "whatsapp",
+    "baileys",
+    "gemini",
+    "ai"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -16,8 +22,10 @@
     "@whiskeysockets/baileys": "^7.0.0-rc.6",
     "dotenv": "^17.2.3",
     "googleapis": "^164.1.0",
-    "mammoth": "^1.6.0",
-    "pptx2json": "^2.1.0",
+    "jimp": "^1.6.0",
+    "jsqr": "^1.4.0",
+    "mammoth": "^1.11.0",
+    "pptx2json": "^0.0.10",
     "qrcode-terminal": "^0.12.0",
     "xlsx": "^0.18.5"
   }
