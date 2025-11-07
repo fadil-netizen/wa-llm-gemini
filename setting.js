@@ -74,7 +74,8 @@ Fitur ini ditenagai oleh Google Gemini.
 
 *Fitur Utama*
 - 💬 *Ingatan Otomatis*: Bot mengingat konteks percakapan Anda (kecuali direset).
-- 🖼️ *Multimodal*: Bot bisa menganalisis gambar, *video*, *PDF, TXT, DOCX/DOC, XLSX/XLS*, dan *PPTX*.
+- 🖼️ *Multimodal*: Bot bisa menganalisis gambar, *video (hingga 250 MB)*, *PDF, TXT, DOCX/DOC, XLSX/XLS*, dan *PPTX*.
+- 💻 *Dukungan Kode/File Teks*: Mampu menganalisis file kode (*.js, .py, .html*) dan file teks kustom (*.mcx-5, .log, dll.*) hingga *100 MB*.
 - 🌐 *Real-time Info*: Bot dapat mencari informasi terbaru menggunakan Google Search Tool.
 
 *⚙️ Pengaturan Mode Kecerdasan*
