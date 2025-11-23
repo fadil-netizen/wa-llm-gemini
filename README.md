@@ -1,1 +1,2 @@
 BOT INI DIKEMBANGKAN OLEH FADIL 
+"# wa-llm-gemini" 
